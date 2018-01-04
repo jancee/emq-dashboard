@@ -1,5 +1,14 @@
 %%-*- mode: erlang -*-
 %% emq_dashboard config mapping
+
+{mapping, "dashboard.user.$id.username", "emq_dashboard.userlist", [
+  {datatype, string}
+]}.
+
+{mapping, "dashboard.user.$id.password", "emq_dashboard.userlist", [
+  {datatype, string}
+]}.
+
 {mapping, "dashboard.listener.http", "emq_dashboard.listeners", [
   %%{default, 18083},
   {datatype, [integer, ip]}
@@ -54,6 +63,16 @@
 {mapping, "dashboard.listener.https.fail_if_no_peer_cert", "emq_dashboard.listeners", [
   {datatype, {enum, [true, false]}}
 ]}.
+
+{translation, "emq_dashboard.userlist", fun(Conf) ->
+  Userlist = cuttlefish_variable:filter_by_prefix("dashboard.user", Conf),
+  lists:foldl(
+    fun({["dashboard", "user", Id, "username"], Username}, AccIn) ->
+        [{Username, cuttlefish:conf_get("dashboard.user." ++ Id ++ ".password", Conf)} | AccIn];
+       (_, AccIn) ->
+        AccIn
+    end, [], Userlist)
+end}.
 
 {translation, "emq_dashboard.listeners", fun(Conf) ->
   Filter = fun(Opts) -> [{K, V} || {K, V} <- Opts, V =/= undefined] end,

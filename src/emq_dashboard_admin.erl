@@ -139,10 +139,10 @@ init([]) ->
     %% Wait???
     %% mnesia:wait_for_tables([mqtt_admin], 5000),
     % Init mqtt_admin table
-    case needs_defaut_user() of
-        true  -> insert_default_user();
-        false -> ok
-    end,
+    Userlist = application:get_env(emq_dashboard, userlist, []),
+    lists:foreach(fun({Username, Password}) ->
+                    add_default_user(iolist_to_binary(Username), iolist_to_binary(Password))
+                  end, Userlist),
     {ok, state}.
 
 handle_call(_Req, _From, State) ->
@@ -176,15 +176,9 @@ salt() ->
     Salt = random:uniform(16#ffffffff),
     <<Salt:32>>.
 
-needs_defaut_user() ->
-    is_empty(mqtt_admin).
-
-is_empty(Tab) ->
-    mnesia:dirty_first(Tab) == '$end_of_table'.
-
-insert_default_user() ->
-    Admin = #mqtt_admin{username = <<"admin">>,
-                        password = hash(<<"public">>),
-                        tags = <<"administrator">>},
-    mnesia:transaction(fun mnesia:write/1, [Admin]).
+add_default_user(Username, Password) ->
+    case lookup_user(Username) of
+        [] -> add_user(Username, Password, <<"administrator">>);
+        _  -> ok
+    end.
 
