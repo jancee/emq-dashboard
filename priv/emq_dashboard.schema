@@ -139,7 +139,6 @@
         case cuttlefish:conf_get(Prefix, Conf, undefined) of
             undefined -> [];
             Port      ->
-                io:format("~p~n", [LisOpts(Prefix)]),
                 [{Proto, Port, case Proto of
                                    http  -> LisOpts(Prefix);
                                    https -> [{sslopts, SslOpts(Prefix)} | LisOpts(Prefix)]
