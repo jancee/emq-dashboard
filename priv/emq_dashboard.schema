@@ -1,7 +1,15 @@
 %%-*- mode: erlang -*-
 %% emq_dashboard config mapping
+
+{mapping, "dashboard.default_user.login", "emq_dashboard.default_user_username", [
+  {datatype, string}
+]}.
+
+{mapping, "dashboard.default_user.password", "emq_dashboard.default_user_passwd", [
+  {datatype, string}
+]}.
+
 {mapping, "dashboard.listener.http", "emq_dashboard.listeners", [
-  %%{default, 18083},
   {datatype, [integer, ip]}
 ]}.
 
@@ -15,8 +23,11 @@
   {datatype, integer}
 ]}.
 
+{mapping, "dashboard.listener.http.access.$id", "emq_dashboard.listeners", [
+  {datatype, string}
+]}.
+
 {mapping, "dashboard.listener.https", "emq_dashboard.listeners", [
-  %%{default, 18084},
   {datatype, [integer, ip]}
 ]}.
 
@@ -30,9 +41,21 @@
   {datatype, integer}
 ]}.
 
+{mapping, "dashboard.listener.https.access.$id", "emq_dashboard.listeners", [
+  {datatype, string}
+]}.
+
+{mapping, "dashboard.listener.https.tls_versions", "emq_dashboard.listeners", [
+  {datatype, string}
+]}.
+
 {mapping, "dashboard.listener.https.handshake_timeout", "emq_dashboard.listeners", [
-  {default, 15},
-  {datatype, integer}
+  {default, "15s"},
+  {datatype, {duration, ms}}
+]}.
+
+{mapping, "dashboard.listener.https.dhfile", "emq_dashboard.listeners", [
+  {datatype, string}
 ]}.
 
 {mapping, "dashboard.listener.https.keyfile", "emq_dashboard.listeners", [
@@ -55,28 +78,72 @@
   {datatype, {enum, [true, false]}}
 ]}.
 
+{mapping, "dashboard.listener.https.ciphers", "emq_dashboard.listeners", [
+  {datatype, string}
+]}.
+
+{mapping, "dashboard.listener.https.secure_renegotiate", "emq_dashboard.listeners", [
+  {datatype, flag}
+]}.
+
+{mapping, "dashboard.listener.https.reuse_sessions", "emq_dashboard.listeners", [
+  {default, on},
+  {datatype, flag}
+]}.
+
+{mapping, "dashboard.listener.https.honor_cipher_order", "emq_dashboard.listeners", [
+  {datatype, flag}
+]}.
+
 {translation, "emq_dashboard.listeners", fun(Conf) ->
   Filter = fun(Opts) -> [{K, V} || {K, V} <- Opts, V =/= undefined] end,
-  Opts = fun(Prefix) ->
+  Access = fun(S) ->
+               [A, CIDR] = string:tokens(S, " "),
+               {list_to_atom(A), case CIDR of "all" -> all; _ -> CIDR end}
+           end,
+  AccOpts = fun(Prefix) ->
+                case cuttlefish_variable:filter_by_prefix(Prefix ++ ".access", Conf) of
+                    [] -> [];
+                    Rules -> [{access, [Access(Rule) || {_, Rule} <- Rules]}]
+                end
+            end,
+  LisOpts = fun(Prefix) ->
              Filter([{acceptors,   cuttlefish:conf_get(Prefix ++ ".acceptors", Conf)},
-                     {max_clients, cuttlefish:conf_get(Prefix ++ ".max_clients", Conf)}])
+                     {max_clients, cuttlefish:conf_get(Prefix ++ ".max_clients", Conf)} | AccOpts(Prefix)])
          end,
+
+  SplitFun = fun(undefined) -> undefined; (S) -> string:tokens(S, ",") end,
+
   SslOpts = fun(Prefix) ->
-                Filter([{handshake_timeout, cuttlefish:conf_get(Prefix ++ ".handshake_timeout", Conf) * 1000},
+               Versions = case SplitFun(cuttlefish:conf_get(Prefix ++ ".tls_versions", Conf, undefined)) of
+                              undefined -> undefined;
+                              L -> [list_to_atom(V) || V <- L]
+                          end,
+                Filter([{versions, Versions},
+                        {ciphers, SplitFun(cuttlefish:conf_get(Prefix ++ ".ciphers", Conf, undefined))},
+                        {handshake_timeout, cuttlefish:conf_get(Prefix ++ ".handshake_timeout", Conf, undefined)},
+                        {dhfile, cuttlefish:conf_get(Prefix ++ ".dhfile", Conf, undefined)},
                         {keyfile,    cuttlefish:conf_get(Prefix ++ ".keyfile", Conf, undefined)},
                         {certfile,   cuttlefish:conf_get(Prefix ++ ".certfile", Conf, undefined)},
                         {cacertfile, cuttlefish:conf_get(Prefix ++ ".cacertfile", Conf, undefined)},
                         {verify,     cuttlefish:conf_get(Prefix ++ ".verify", Conf, undefined)},
-                        {fail_if_no_peer_cert, cuttlefish:conf_get(Prefix ++ ".fail_if_no_peer_cert", Conf, undefined)}])
-              end,
-  lists:append([
-      case cuttlefish:conf_get("dashboard.listener.http", Conf, undefined) of
-          undefined -> [];
-          HttpPort  -> [{http, HttpPort, Opts("dashboard.listener.http")}]
-      end,
-      case cuttlefish:conf_get("dashboard.listener.https", Conf, undefined) of
-          undefined -> [];
-          HttpsPort -> [{https, HttpsPort, [{sslopts, SslOpts("dashboard.listener.https")} | Opts("dashboard.listener.https")]}]
-      end])
+                        {fail_if_no_peer_cert, cuttlefish:conf_get(Prefix ++ ".fail_if_no_peer_cert", Conf, undefined)},
+                        {secure_renegotiate, cuttlefish:conf_get(Prefix ++ ".secure_renegotiate", Conf, undefined)},
+                        {reuse_sessions, cuttlefish:conf_get(Prefix ++ ".reuse_sessions", Conf, undefined)},
+                        {honor_cipher_order, cuttlefish:conf_get(Prefix ++ ".honor_cipher_order", Conf, undefined)}])
+            end,
+  lists:append(
+    lists:map(
+      fun(Proto) ->
+        Prefix = "dashboard.listener." ++ atom_to_list(Proto),
+        case cuttlefish:conf_get(Prefix, Conf, undefined) of
+            undefined -> [];
+            Port      ->
+                [{Proto, Port, case Proto of
+                                   http  -> LisOpts(Prefix);
+                                   https -> [{sslopts, SslOpts(Prefix)} | LisOpts(Prefix)]
+                               end}]
+        end
+      end, [http, https]))
 end}.
 
