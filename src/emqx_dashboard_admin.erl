@@ -186,8 +186,5 @@ add_default_user(Username, Password) when ?EMPTY_KEY(Username) orelse ?EMPTY_KEY
     igonre;
 
 add_default_user(Username, Password) ->
-    case lookup_user(Username) of
-        [] -> add_user(Username, Password, <<"administrator">>);
-        _  -> ok
-    end.
+    add_user(Username, Password, <<"administrator">>).
 
