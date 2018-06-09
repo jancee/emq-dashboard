@@ -14,7 +14,7 @@ end}.
   {datatype, string}
 ]}.
 
-{mapping, "dashboard.default_user.password", "emqx_dashboard.default_user_passwd", [
+{mapping, "dashboard.default_user.password", "emqx_dashboard.default_user_password", [
   {datatype, string}
 ]}.
 
