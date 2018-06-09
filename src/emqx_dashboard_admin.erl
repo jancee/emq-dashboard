@@ -186,5 +186,13 @@ add_default_user(Username, Password) when ?EMPTY_KEY(Username) orelse ?EMPTY_KEY
     igonre;
 
 add_default_user(Username, Password) ->
-    add_user(Username, Password, <<"administrator">>).
+    Fun = fun() ->
+        case mnesia:wread({mqtt_admin, Username}) of
+            [] -> mnesia:write(#mqtt_admin{username = Username, password = hash(Password), tags = <<"administrator">>});
+            [Admin] -> mnesia:write(#mqtt_admin{password = hash(Password), tags = Tags})
+        end
+    end,
+    mnesia:transaction(Fun),
+    ok.
+    
 
