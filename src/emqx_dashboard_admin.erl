@@ -189,7 +189,7 @@ add_default_user(Username, Password) ->
     Fun = fun() ->
         case mnesia:wread({mqtt_admin, Username}) of
             [] -> mnesia:write(#mqtt_admin{username = Username, password = hash(Password), tags = <<"administrator">>});
-            [Admin] -> mnesia:write(#mqtt_admin{password = hash(Password)})
+            [_Admin] -> mnesia:write(#mqtt_admin{password = hash(Password)})
         end
     end,
     mnesia:transaction(Fun),
