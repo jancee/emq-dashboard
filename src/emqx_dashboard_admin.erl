@@ -141,11 +141,11 @@ init([]) ->
                 {disc_copies, [node()]},
                 {record_name, mqtt_admin},
                 {attributes, record_info(fields, mqtt_admin)}]),
-    ok = ekka_mnesia:copy_table(mqtt_admin, disc_copies),
+    ok = ekka_mnesia:copy_table(mqtt_admin, ram_copies),
     %% Wait???
     %% mnesia:wait_for_tables([mqtt_admin], 5000),
     % Init mqtt_admin table
-    add_default_user(binenv(default_user_username), binenv(default_user_passwd)),
+    add_default_user(binenv(default_user_username), binenv(default_user_password)),
     {ok, state}.
 
 handle_call(_Req, _From, State) ->
