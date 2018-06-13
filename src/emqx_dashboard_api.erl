@@ -64,9 +64,23 @@ auth(_Bindings, Params) ->
     return(emqx_dashboard_admin:check(Username, Password)).
 
 change_pwd(#{username := Username}, Params) ->
-    OldPwd = proplists:get_value(<<"old_pwd">>, Params),
-    NewPwd = proplists:get_value(<<"new_pwd">>, Params),
-    return(emqx_dashboard_admin:change_password(Username, OldPwd, NewPwd)).
+    Username1 = iolist_to_binary(application:get_env(emqx_dashboard, default_user_username, "")),
+    case Username1 =:= Username of
+        true -> return({error, <<228,184,141,232,131,189,233,128,154,
+                                232,191,135,68,97,115,104,98,111,97,
+                                114,100,228,191,174,230,148,185,233,
+                                187,152,232,174,164,231,174,161,231,
+                                144,134,229,145,152,229,175,134,231,
+                                160,129,239,188,140,232,175,183,229,
+                                156,168,233,157,146,228,186,145,230,
+                                142,167,229,136,182,229,143,176,228,
+                                191,174,230,148,185,227,128,130>>});
+        false ->
+            OldPwd = proplists:get_value(<<"old_pwd">>, Params),
+            NewPwd = proplists:get_value(<<"new_pwd">>, Params),
+            return(emqx_dashboard_admin:change_password(Username, OldPwd, NewPwd))
+    end.
+
 
 create(_Bindings, Params) ->
     Username = proplists:get_value(<<"username">>, Params),
