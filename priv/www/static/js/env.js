@@ -1,5 +1,5 @@
 var EMQ_DASHBOARD_CONFIG = {
-  components: ['refactor', 'qingcloud'],
-  platform: 'qingcloud',
+  components: ['refactor', 'aliyun'],
+  platform: 'aliyun',
   language: 'zh',
 }
