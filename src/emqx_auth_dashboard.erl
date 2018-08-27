@@ -25,12 +25,12 @@
 init([Listeners]) ->
     {ok, Listeners}.
 
-check(#mqtt_client{ws_initial_headers = undefined}, _Password, _) ->
+check(#{ws_initial_headers := undefined}, _Password, _) ->
     ignore;
 
-check(#mqtt_client{client_id = <<"dashboard_", _/binary>>,
-                   username  = <<"dashboard">>,
-                   ws_initial_headers = Headers}, _Password, Listeners) ->
+check(#{client_id := <<"dashboard_", _/binary>>,
+        username  := <<"dashboard">>,
+        ws_initial_headers := Headers}, _Password, Listeners) ->
     Origin = proplists:get_value("Origin", Headers, ""),
     case is_from_dashboard(Origin, Listeners) of
         true  -> ok;
